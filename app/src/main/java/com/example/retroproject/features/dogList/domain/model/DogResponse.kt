@@ -1,4 +1,4 @@
-package com.example.retroproject.features.home.domain.model
+package com.example.retroproject.features.dogList.domain.model
 
 data class Dog(
     val id : String? = null,

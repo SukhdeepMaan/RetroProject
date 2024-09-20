@@ -1,4 +1,4 @@
-package com.example.retroproject.features.home.ui.screen
+package com.example.retroproject.features.dogList.ui.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -14,41 +15,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.example.retroproject.base.UIState
-import com.example.retroproject.features.home.domain.model.Dog
-import com.example.retroproject.features.home.ui.viewModel.HomeViewModel
+import com.example.retroproject.features.dogList.domain.model.Dog
+import com.example.retroproject.features.dogList.domain.model.DogRequest
+import com.example.retroproject.features.dogList.ui.viewModel.DogViewModel
 
 @Composable
-fun HomeScreen(
+fun DogListScreen(
     modifier: Modifier = Modifier,
-    homeViewModel: HomeViewModel
+    dogViewModel: DogViewModel
 ) {
-    val uiState by homeViewModel.dogState.collectAsState()
+    val uiState by dogViewModel.dogState.collectAsState()
+    val justToSee by dogViewModel.justToSee.collectAsState()
     val listState = rememberLazyListState()
 
-    LaunchedEffect(Unit) {
-        homeViewModel.getDogList(limit = 10, page = 1) // Example limit and page values
+
+    // Observe the last visible item index using snapshotFlow
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleItemIndex ->
+                // Check if we are near the end of the list (second last item)
+                if (lastVisibleItemIndex == (uiState as? UIState.Success<List<Dog>>)?.data?.size?.minus(2)) {
+                    dogViewModel.loadMoreDogs() // Load more dogs
+                }
+            }
     }
 
-    when(uiState) {
+    when (uiState) {
         is UIState.Loading -> {
             CircularProgressIndicator()
         }
+
         is UIState.Error -> {
             Text(text = (uiState as UIState.Error).message)
 
         }
+
         is UIState.Success -> {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items((uiState as UIState.Success<List<Dog>>).data)
-                { dog ->
+                itemsIndexed((uiState as UIState.Success<List<Dog>>).data)
+                { item, dog ->
+                    Text("page number is $justToSee")
+                    Text("${item+1}")
                     DogItem(dog)
                 }
             }
